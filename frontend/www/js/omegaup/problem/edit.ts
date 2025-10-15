@@ -5,8 +5,16 @@ import Vue from 'vue';
 import problem_Edit from '../components/problem/Edit.vue';
 import * as ui from '../ui';
 import * as api from '../api';
+import store from './creator/store';
+
+import { BootstrapVue, BootstrapVueIcons } from 'bootstrap-vue';
+import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap-vue/dist/bootstrap-vue.css';
 
 OmegaUp.on('ready', () => {
+  Vue.use(BootstrapVue);
+  Vue.use(BootstrapVueIcons);
+
   const payload = types.payloadParsers.ProblemEditPayload();
   if (payload.statusError) {
     ui.error(payload.statusError);
@@ -19,6 +27,7 @@ OmegaUp.on('ready', () => {
   };
   const problemEdit = new Vue({
     el: '#main-container',
+    store,
     components: {
       'omegaup-problem-edit': problem_Edit,
     },

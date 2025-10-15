@@ -46,7 +46,7 @@
         class="mr-2"
         variant="primary"
         size="sm"
-        @click="generateProblem()"
+        @click="generateFinalProblem()"
       >
         <BIconDownload class="mr-1" />
         <span class="d-none d-md-inline">
@@ -89,6 +89,7 @@ import { namespace } from 'vuex-class';
 import T from '../../../lang';
 import * as ui from '../../../ui';
 import { Group, CaseGroupID } from '@/js/omegaup/problem/creator/types';
+import { buildProblemZip } from './problemZipBuilder';
 
 const casesStore = namespace('casesStore');
 
@@ -119,6 +120,7 @@ export default class Header extends Vue {
 
   handleZipFile(ev: Event): void {
     this.zipFile = this.readFile(ev.target as HTMLInputElement);
+    this.$emit('file-changed', this.zipFile);
   }
 
   retrieveStore(): void {
@@ -145,12 +147,15 @@ export default class Header extends Vue {
                 if (data.status === 'ok' && data.cdp) {
                   // Llama a la función de actualización con los datos de la API
                     this.updateStore(data.cdp);
+                    console.log(data);
                     //ui.error("El ZIP fue convertido y el store actualizado correctamente.");
                 } else {
-                    ui.error("Ocurrió un error en el servidor.");
+                    ui.error(data.message);
+                    console.log(data);
                 }
             })
-            .catch(() => {
+            .catch(error => {
+                console.error('Ocurrió un error:', error); 
                 ui.error("Ocurrió un error de red al intentar la conversión.");
             });
             return;
@@ -179,6 +184,7 @@ export default class Header extends Vue {
       problemCodeExtension: storeData.problemCodeExtension,
       problemSolutionMarkdown: storeData.problemSolutionMarkdown,
     });
+    console.log(JSON.stringify(storeData,null,2));
     if (storeData.casesStore) {
       this.$store.commit('casesStore/replaceState', storeData.casesStore);
     }
@@ -199,11 +205,6 @@ export default class Header extends Vue {
     const folder = zip.folder('solutions');
     const solutionMarkdownData = this.$store.state.problemSolutionMarkdown;
     folder?.file('es.markdown', solutionMarkdownData);
-  }
-  getCode(zip: JSZip) {
-    const folder = zip.folder('solutions');
-    const codeContent = this.$store.state.problemCodeContent;
-    folder?.file('code.markdown', codeContent);
   }
 
   getCasesAndTestPlan(zip: JSZip) {
@@ -235,7 +236,6 @@ export default class Header extends Vue {
     this.getStatement(this.zip);
     this.getSolution(this.zip);
     this.getCasesAndTestPlan(this.zip);
-    // this.getCode(this.zip);
 
     const problemName: string = this.$store.state.problemName;
     this.$emit('download-zip-file', {
@@ -249,5 +249,22 @@ export default class Header extends Vue {
     this.$store.commit('casesStore/resetStore');
     window.location.reload();
   }
+  async generateFinalProblem() {
+
+      const originalFile = this.zipFile; 
+      const stateSnapshot = JSON.parse(JSON.stringify(this.$store.state));
+
+      const zipBlob = await buildProblemZip(
+        stateSnapshot, 
+        this.zipFile
+      );
+
+      const problemName = stateSnapshot.problemName;
+      this.$emit('download-zip-file', {
+        fileName: problemName.replace(/ /g, '_'),
+        zipContent: zipBlob,
+      });
+  }
+  
 }
 </script>
