@@ -79,7 +79,7 @@
             </div>
           </div>
 
-          <!-- Creador de problemas -->
+          
           <div class="card">
             <div class="card-header">
               <h2 class="mb-0">
@@ -92,6 +92,7 @@
                   aria-expanded="true"
                   aria-controls="problem-form-problem"
                 >
+                <!-- Change to variable t language -->
                   Creador de Problemas
                 </button>
               </h2>
@@ -752,7 +753,7 @@ export default class ProblemForm extends Vue {
     this.$emit('alias-changed', newValue);
   }
 
-  // --- MÉTODOS PARA MANEJAR EVENTOS DEL PROBLEM CREATOR ---
+  // --- METHODS FOR HANDLING PROBLEM CREATOR EVENTS ---
   private originalFile: File | null = null;
   handleShowSuccess(): void {
     ui.success(T.problemCreatorUpdateAlert);
@@ -802,7 +803,7 @@ export default class ProblemForm extends Vue {
     const state = JSON.parse(JSON.stringify(this.$store.state));
     const zip = await buildProblemZip(state, this.originalFile);
     if (!zip) { ui.error('ZIP inválido.'); return; }
-    
+  
     const problemName = (state.problemName || 'problem').replace(/ /g, '_');
 
     formData.set('problem_contents', zip, `${problemName}`);

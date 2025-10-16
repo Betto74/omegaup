@@ -231,7 +231,7 @@ export default class Header extends Vue {
     zip.file('testplan', testPlanData);
     zip.file('cdp.data', JSON.stringify(this.$store.state));
   }
-
+  // This previous method was left to avoid errors with the test.
   generateProblem() {
     this.getStatement(this.zip);
     this.getSolution(this.zip);
