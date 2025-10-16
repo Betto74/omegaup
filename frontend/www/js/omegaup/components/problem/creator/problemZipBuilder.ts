@@ -10,21 +10,19 @@ export async function buildProblemZip(
 
     const newZip = new JSZip();
     let originalZip: JSZip | null = null;
-    // 1. Cargamos el ZIP original para poder leerlo
+
     if (originalZipFile) {
         originalZip = await JSZip.loadAsync(originalZipFile);
     }
 
-    // 2. Añadimos statements y solutions (antes eran los métodos getSolution/getStatement)
     newZip.folder('statements')?.file('es.markdown', problemState.problemMarkdown);
     newZip.folder('solutions')?.file('es.markdown', problemState.problemSolutionMarkdown);
     
-    // 3. Procesamos los casos y el testplan
+
     const casesFolder = newZip.folder('cases');
     let testPlanData: string = '';
     const caseProcessingPromises: Promise<void>[] = [];
 
-    // Usamos los grupos del estado que pasamos como parámetro
     problemState.casesStore.groups.forEach((_group: any) => {
     _group.cases.forEach((_case: any) => {
         let fileName = _case.name;
@@ -33,7 +31,6 @@ export async function buildProblemZip(
         }
         testPlanData += `${fileName} ${_case.points}\n`;
 
-        // --- Procesar .in ---
         const inPromise = (async () => {
             let inputContent = '';
             if (_case.lines && _case.lines.length > 0) {
@@ -53,7 +50,6 @@ export async function buildProblemZip(
         })();
         caseProcessingPromises.push(inPromise);
 
-        // --- Procesar .out ---
         const outPromise = (async () => {
         const pathInZip = `${fileName}.out`;
         const outputContent = _case.output;
@@ -72,14 +68,11 @@ export async function buildProblemZip(
     });
     });
 
-    // Esperamos a que todos los casos se procesen
     await Promise.all(caseProcessingPromises);
 
-    // 4. Añadimos los archivos finales
     newZip.file('testplan', testPlanData);
-    newZip.file('cdp.data', JSON.stringify(problemState)); // Guardamos el estado completo
+    newZip.file('cdp.data', JSON.stringify(problemState));
 
-    // 5. Generamos y devolvemos el Blob final
     return newZip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
