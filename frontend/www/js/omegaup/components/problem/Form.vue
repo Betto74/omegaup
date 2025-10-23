@@ -75,40 +75,39 @@
                   />
                 </div>
               </div>
-
             </div>
           </div>
 
-          
-          <div class="card">
-            <div class="card-header">
-              <h2 class="mb-0">
-                <button
-                  ref="problem-creator-section"
-                  class="btn btn-link btn-block text-left"
-                  type="button"
-                  data-toggle="collapse"
-                  data-target=".problem-creator-section"
-                  aria-expanded="true"
-                  aria-controls="problem-form-problem"
-                >
-                <!-- Change to variable t language -->
-                  Creador de Problemas
-                </button>
-              </h2>
-            </div>
-            <div class="collapse show card-body px-2 px-sm-4 problem-creator-section">
-              <div class="collapse show card-body problem-creator-section">
-                <problem-creator
-                  @show-update-success-message="handleShowSuccess"
-                  @download-zip-file="handleDownloadZip"
-                  @download-input-file="handleDownloadInput"
-                  @file-changed="onFileChanged"
-                ></problem-creator>
+          <template v-if="!isUpdate">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="mb-0">
+                  <button
+                    ref="problem-creator-section"
+                    class="btn btn-link btn-block text-left"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target=".problem-creator-section"
+                    aria-expanded="true"
+                    aria-controls="problem-form-problem"
+                  >
+                  <!-- Change to variable t language -->
+                    Creador de Problemas
+                  </button>
+                </h2>
+              </div>
+              <div class="collapse show card-body px-2 px-sm-4 problem-creator-section">
+                <div class="collapse show card-body problem-creator-section">
+                  <problem-creator
+                    @show-update-success-message="handleShowSuccess"
+                    @download-zip-file="handleDownloadZip"
+                    @download-input-file="handleDownloadInput"
+                    @file-changed="onFileChanged"
+                  ></problem-creator>
+                </div>
               </div>
             </div>
-          </div>
-
+          </template>
           <template v-if="!isUpdate">
             <div class="card">
               <div class="card-header">

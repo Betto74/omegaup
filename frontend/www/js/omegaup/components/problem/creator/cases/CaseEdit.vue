@@ -73,7 +73,7 @@
           no-caret
         >
           <template #button-content>
-            {{"Genarar input" }}
+            {{"Generar input" }}
           </template>
 
           <b-button
@@ -87,6 +87,7 @@
           </b-button>
           <b-button
             data-menu-generate-matrix
+            :disabled="isInputTruncated"
             variant="light"
             class="w-100"
             @click="matrixModalEdit = !matrixModalEdit"
@@ -140,6 +141,9 @@
       </div>
     </div>
     <hr class="border-top my-2" />
+    <b-alert v-if="isInputTruncated || isOutputTruncated" variant="warning" show class="mb-2">
+      {{ "Please note that the input or output content is truncated. Editing is disabled to avoid memory overload." }}
+    </b-alert>
     <div>
       <table class="table">
         <tbody>
@@ -148,6 +152,7 @@
               <b-container fluid class="bg-light">
                 <b-row class="d-flex justify-content-between" align-v="center">
                   <b-col class="pr-1 text-center">
+                    <h5>Input</h5>
                     <b-form-textarea
                       v-model="inputText"
                       :disabled="isInputTruncated"
@@ -175,12 +180,12 @@
               </b-container>
             </td>
           </tr>
-
           <tr>
             <td>
               <b-container fluid class="bg-light">
                 <b-row class="d-flex justify-content-between" align-v="center">
                   <b-col class="pr-1 text-center">
+                    <h5>Output</h5>
                     <b-form-textarea
                       v-model="getSelectedCase.output"
                       :disabled="isOutputTruncated"
@@ -211,6 +216,10 @@
           </tr>
         </tbody>
       </table>
+    <CaseSimpleForm
+      :is-truncated-input="isInputTruncated"
+      :is-truncated-output="isOutputTruncated"
+    />
     </div>
     <b-modal
       v-model="arrayModalEdit"
@@ -440,6 +449,8 @@ import 'bootstrap-vue/dist/bootstrap-vue.css';
 import { BNavItemDropdown, FormInputPlugin, ModalPlugin } from 'bootstrap-vue';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { library } from '@fortawesome/fontawesome-svg-core';
+import CaseSimpleForm from './CasesForm.vue';
+
 library.add(fas);
 Vue.use(FormInputPlugin);
 Vue.use(ModalPlugin);
@@ -453,6 +464,7 @@ const TRUNC_SUFFIX = '...[TRUNCATED]';
     'font-awesome-icon': FontAwesomeIcon,
     'font-awesome-layers': FontAwesomeLayers,
     'font-awesome-layers-text': FontAwesomeLayersText,
+    'CaseSimpleForm': CaseSimpleForm,
   },
 })
 export default class CaseEdit extends Vue {
@@ -783,12 +795,10 @@ export default class CaseEdit extends Vue {
   
   
   get inputText(): string {
-    // Une todas las lines actuales en un solo textarea
     return this.getLinesFromSelectedCase.map(l => l.data.value ?? '').join('\n');
   }
   set inputText(v: string) {
     if (this.isInputTruncated) return; 
-    // Reemplaza el contenido usando UNA sola line tipo 'multiline'
     this.deleteLinesForSelectedCase();
     this.addNewLine();
     const last = this.getLinesFromSelectedCase[this.getLinesFromSelectedCase.length - 1];

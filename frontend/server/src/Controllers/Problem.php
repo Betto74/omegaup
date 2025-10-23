@@ -5354,10 +5354,12 @@ class Problem extends \OmegaUp\Controllers\Controller {
         if (!empty($r['problem']) && is_string($r['problem'])) {
             $r['problem_alias'] = $r['problem'];
         }
+        
         $problemParams = self::convertRequestToProblemParams(
             $r,
             isRequired: false
         );
+      
         $problem = \OmegaUp\DAO\Problems::getByAlias(
             $problemParams->problemAlias
         );
@@ -5366,7 +5368,6 @@ class Problem extends \OmegaUp\Controllers\Controller {
                 'problemNotFound'
             );
         }
-        
         $versions = self::getVersions($problem, $r->identity);
         $lang = \OmegaUp\Controllers\Identity::getPreferredLanguage(
             $r->identity,
@@ -5377,6 +5378,11 @@ class Problem extends \OmegaUp\Controllers\Controller {
             $problem->commit,
             $lang
         );
+        $cdp = \OmegaUp\Controllers\Problem::getProblemCDP(
+            $problem,
+            strval($problem->commit)
+        );
+        
         $publishedRevision = null;
         foreach ($versions['log'] as $revision) {
             if ($versions['published'] === $revision['commit']) {
@@ -5411,6 +5417,7 @@ class Problem extends \OmegaUp\Controllers\Controller {
             'log' => $versions['log'],
             'publishedRevision' => $publishedRevision,
             'solution' => $solution,
+            'cdp' => $cdp,
         ];
 
         $result = [
@@ -5503,6 +5510,135 @@ class Problem extends \OmegaUp\Controllers\Controller {
             }
             $details = self::getProblemEditDetails($problem, $r->identity);
             $result['templateProperties']['payload']['statement'] = $details['statement'];
+
+        }elseif($request === 'cases'){
+
+            $contents = $r->ensureString('contents');
+            $caseData = json_decode($contents, true);
+            if (!is_array($caseData)) {
+                throw new \OmegaUp\Exceptions\InvalidParameterException('invalidJson');
+            } 
+
+            try{    
+                $problemArtifacts = new \OmegaUp\ProblemArtifacts($problem->alias);
+
+                $deployer = new \OmegaUp\ProblemDeployer(
+                    $problem->alias,
+                    acceptsSubmissions: true,
+                    updatePublished: $problemParams->updatePublished
+                );
+
+                $requiredFields = ['group_name', 'case_name', 'input', 'output'];
+                foreach ($requiredFields as $field) {
+                    if (!isset($caseData[$field])) {
+                        throw new \OmegaUp\Exceptions\InvalidParameterException("missing_{$field}");
+                    }
+                }
+
+                $newGroupName = $caseData['group_name'];
+                $newCaseName = $caseData['case_name'];
+                $newInput = $caseData['input'];
+                $newOutput = $caseData['output'];
+                
+                $newPathBase = ($newGroupName === $newCaseName)
+                    ? $newCaseName // Ungrouped
+                    : "{$newGroupName}.{$newCaseName}"; // Grouped
+
+                $newInputPath = "cases/{$newPathBase}.in";
+                $newOutputPath = "cases/{$newPathBase}.out";
+
+                $isEditOperation = !is_null($caseData['oldCase']);
+
+                $blobUpdate = [];
+                if( $isEditOperation ){
+
+                    $oldGroupName = $caseData['oldCase']['oldGroupName'];
+                    $oldCaseName = $caseData['oldCase']['oldCaseName'];
+                    $oldInput = $caseData['oldCase']['input'];
+                    $oldOutput = $caseData['oldCase']['output'];
+
+                    
+                    $inputChanged = $newInput !== $oldInput;
+                    $outputChanged = $newOutput !== $oldOutput; 
+
+                    $oldPathBase = ($oldGroupName === $oldCaseName)
+                        ? $oldCaseName // Ungrouped
+                        : "{$oldGroupName}.{$oldCaseName}"; // Grouped
+                    
+                    $oldInputPath = "cases/{$oldPathBase}.in";
+                    $oldOutputPath = "cases/{$oldPathBase}.out";
+                    
+                    if (!$problemArtifacts->exists($oldInputPath) || !$problemArtifacts->exists($oldOutputPath)) {
+                        throw new \OmegaUp\Exceptions\NotFoundException('testCaseNotFound');
+                    }
+                    $nameChanged = ($newGroupName !== $oldGroupName) || ($newCaseName !== $oldCaseName);
+
+                    if ($nameChanged) {
+                        if ($problemArtifacts->exists($newInputPath) || $problemArtifacts->exists($newOutputPath)) {
+                            throw new \OmegaUp\Exceptions\DuplicatedEntryInDatabaseException('testCaseAlreadyExists');
+                        }
+                        $blobUpdate[$newInputPath] = $newInput;
+                        $blobUpdate[$newOutputPath] = $newOutput;
+
+                        $tempZipPath = self::rebuildProblemZip(
+                            $problem->alias,
+                            $oldPathBase,
+                            $blobUpdate
+                        );
+
+                        //mandar la peticion para el nuevo zip.
+                        
+
+                    }  
+                    else{
+                        if($inputChanged) $blobUpdate[$oldInputPath] = $newInput;
+                        if($outputChanged) $blobUpdate[$oldOutputPath] = $newOutput;
+                    }
+                    
+                }else{
+                    if ($problemArtifacts->exists($newInputPath) || $problemArtifacts->exists($newOutputPath)) {
+                        throw new \OmegaUp\Exceptions\DuplicatedEntryInDatabaseException('testCaseAlreadyExists');
+                    }
+                    $blobUpdate[$newInputPath] = $newInput;
+                    $blobUpdate[$newOutputPath] = $newOutput;
+                }
+
+                if( $blobUpdate === [] ){
+                    throw new \OmegaUp\Exceptions\InvalidParameterException('noChangesDetected');
+                }
+
+                $deployer->commitLooseFiles(
+                    $message,
+                    $r->identity,
+                    $blobUpdate
+                );
+
+                if (!is_null($deployer->publishedCommit)) {
+                    $problem->commit = $deployer->publishedCommit;
+                    \OmegaUp\DAO\Problems::update($problem);
+                }
+
+                \OmegaUp\Cache::deleteFromCache(
+                    \OmegaUp\Cache::PROBLEM_CDP_DATA,
+                    "{$problem->alias}-{$problem->commit}"
+                );
+                // Recargar los detalles del problema después de la actualización
+                $details = self::getProblemEditDetails($problem, $r->identity);
+                $result['templateProperties']['payload']['statement'] = $details['statement'];
+            } catch (\OmegaUp\Exceptions\NotFoundException $e) {
+                throw $e;
+            } catch (\OmegaUp\Exceptions\DuplicatedEntryInDatabaseException $e) {
+                throw $e;
+            } catch (\OmegaUp\Exceptions\ProblemDeploymentFailedException $e) {
+                \OmegaUp\ApiCaller::logException($e);
+                throw $e;
+            } catch (\Exception $e) {
+                \OmegaUp\ApiCaller::logException($e);
+                throw new \OmegaUp\Exceptions\InvalidFilesystemOperationException(
+                    'errorUpdatingTestCase'
+                );
+            }
+
         }
         $result['templateProperties']['payload']['statusSuccess'] = true;
         return $result;
@@ -5617,11 +5753,6 @@ class Problem extends \OmegaUp\Controllers\Controller {
     public static function getProblemNewForTypeScript(
         \OmegaUp\Request $r
     ): array {
-        // echo '<h3>Datos:</h3>';
-        // echo '<pre>';
-        // var_dump($r);
-        // echo '</pre>';
-        // die();
         $r->ensureMainUserIdentity();
         $tags = [];
         $selectedTags = null;
@@ -6752,6 +6883,108 @@ class Problem extends \OmegaUp\Controllers\Controller {
             ],
             'entrypoint' => 'problem_print',
         ];
+    }
+
+    public static function getProblemCDP(
+        \OmegaUp\DAO\VO\Problems $problem,
+        string $commit
+    ): ?array {
+        return \OmegaUp\Cache::getFromCacheOrSet(
+            \OmegaUp\Cache::PROBLEM_CDP_DATA,
+            "{$problem->alias}-{$commit}",
+            fn () => \OmegaUp\Controllers\Problem::getProblemCDPImpl([
+                'alias' => strval($problem->alias),
+                'commit' => $commit
+            ]),
+            APC_USER_CACHE_PROBLEM_STATEMENT_TIMEOUT
+        );
+    }
+
+    private static function getProblemCDPImpl(array $params): ?array {
+
+        if (is_null($params['alias'])) {
+            throw new \OmegaUp\Exceptions\NotFoundException('problemNotFound');
+        }
+
+        $problemArtifacts = new \OmegaUp\ProblemArtifacts(
+            $params['alias']
+        );
+
+        $sourcePath  = 'cdp.data';
+        $zipFilePath = null;
+
+        if (!$problemArtifacts->exists($sourcePath)) {
+            $zipFilePath = $problemArtifacts->getZip();
+        }
+
+        try {
+            if( !is_null($zipFilePath) ){
+                $result = \OmegaUp\ZipToCdpConverter::convert($zipFilePath, $params['alias']);
+            } else {
+                $jsonContent= mb_convert_encoding(
+                    $problemArtifacts->get(
+                        $sourcePath
+                    ),
+                    'utf-8'
+                );
+                $result = json_decode($jsonContent, associative: true);
+            }
+            return $result;
+
+        } catch (\OmegaUp\Exceptions\NotFoundException $e) {
+            return null;
+        } catch (\OmegaUp\Exceptions\ApiException $e) {
+            throw $e;
+        }catch (\Exception $e) {
+            throw new \OmegaUp\Exceptions\InvalidFilesystemOperationException(
+                'cdpNotFound'
+            );
+        }
+        finally {
+            if ( !is_null($zipFilePath) && file_exists($zipFilePath)) {
+                unlink($zipFilePath);
+            }
+        }
+    }
+
+    private static function rebuildProblemZip(
+        string $problemAlias,
+        string $pathToExclude,
+        array $filesToAdd
+    ): string {
+        $problemArtifacts = new \OmegaUp\ProblemArtifacts($problemAlias);
+        $zipFilePath = $problemArtifacts->getZip();
+
+        $zip = new \ZipArchive();
+        $zip->open($zipFilePath);
+
+        $tempZipPath = tempnam(sys_get_temp_dir(), 'problem-zip-');
+        if ($tempZipPath === false) {
+            throw new \OmegaUp\Exceptions\InvalidFilesystemOperationException('zipTempError');
+        }
+        $zipWrite = new \ZipArchive();
+        $zipWrite->open($tempZipPath, \ZipArchive::OVERWRITE);
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $path = $zip->getNameIndex($i);
+            if (str_starts_with($path, $pathToExclude)) {
+                continue;
+            }
+
+            $content = $zip->getFromIndex($i);
+            if ($content === false) {
+                continue;
+            }
+            $zipWrite->addFromString($path, $content);
+        }
+
+        foreach ($filesToAdd as $path => $content) {
+            $zipWrite->addFromString($path, $content);
+        }
+        
+        $zip->close();
+        $zipWrite->close();
+        return $tempZipPath;
     }
 
 
