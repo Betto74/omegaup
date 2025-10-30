@@ -339,9 +339,10 @@ export default class ProblemEdit extends Vue {
   @Prop() searchResultGroups!: types.ListItem[];
   @Prop({ default: null }) cdp!: Record<string, unknown> | null;
   
-  @Provide('problemAlias')get providedAlias(): string{
+  @Provide('problemAlias')
+  get providedAlias(): string{
     return this.data.alias;
-  } 
+  }
   @Provide('originalCasesMap')
   get providedCasesMap(): Map<string, any> {
     if (!this.casesMapCache) {
@@ -349,6 +350,8 @@ export default class ProblemEdit extends Vue {
     }
     return this.casesMapCache;
   }
+
+  @Provide('isEditing') isEditing = true;
   private casesMapCache: Map<string, any> | null = null;
   T = T;
   alias = this.data.alias;

@@ -7,7 +7,7 @@
           {{ getSelectedGroup.name }}
         </h5>
       </div>
-      <div>
+      <div  v-if="!confirmingDelete">
         <b-button
           variant="light"
           class="mr-2"
@@ -48,12 +48,7 @@
           data-delete-case
           variant="light"
           class="mr-2"
-          @click="
-            deleteCase({
-              groupID: getSelectedGroup.groupID,
-              caseID: getSelectedCase.caseID,
-            })
-          "
+          @click="handleDeleteClick"
         >
           <div class="container">
             <div class="row">
@@ -140,6 +135,12 @@
         </b-dropdown>
       </div>
     </div>
+    <delete-confirmation-form
+      v-if="isEditing"
+      :visible="confirmingDelete"
+      :item-name="itemNameForDelete"
+      :on-cancel="cancelDelete"
+    />
     <hr class="border-top my-2" />
     <b-alert v-if="isInputTruncated || isOutputTruncated" variant="warning" show class="mb-2">
       {{ "Please note that the input or output content is truncated. Editing is disabled to avoid memory overload." }}
@@ -217,6 +218,7 @@
         </tbody>
       </table>
     <CaseSimpleForm
+      v-if="isEditing"
       :is-truncated-input="isInputTruncated"
       :is-truncated-output="isOutputTruncated"
     />
@@ -424,7 +426,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Ref } from 'vue-property-decorator';
+import { Component, Vue, Ref, Inject } from 'vue-property-decorator';
 import T from '../../../../lang';
 import problemCreator_Cases_CaseInput from './CaseInput.vue';
 import { namespace } from 'vuex-class';
@@ -450,6 +452,7 @@ import { BNavItemDropdown, FormInputPlugin, ModalPlugin } from 'bootstrap-vue';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import CaseSimpleForm from './CasesForm.vue';
+import DeleteConfirmationForm from './DeleteConfirmationForm.vue';
 
 library.add(fas);
 Vue.use(FormInputPlugin);
@@ -465,6 +468,7 @@ const TRUNC_SUFFIX = '...[TRUNCATED]';
     'font-awesome-layers': FontAwesomeLayers,
     'font-awesome-layers-text': FontAwesomeLayersText,
     'CaseSimpleForm': CaseSimpleForm,
+    'delete-confirmation-form': DeleteConfirmationForm,
   },
 })
 export default class CaseEdit extends Vue {
@@ -792,7 +796,9 @@ export default class CaseEdit extends Vue {
       fileContent: input,
     });
   }
-  
+
+
+  @Inject({ default: false }) readonly isEditing!: boolean;
   
   get inputText(): string {
     return this.getLinesFromSelectedCase.map(l => l.data.value ?? '').join('\n');
@@ -824,6 +830,36 @@ export default class CaseEdit extends Vue {
     const text = (this.getSelectedCase?.output ?? '').trim();
     return text.endsWith(TRUNC_SUFFIX);
   }
+
+  confirmingDelete: boolean = false;
+
+  startDeleteConfirmation() {
+    console.log('Starting delete confirmation', this.isEditing);
+    this.confirmingDelete = true;
+  }
+
+  cancelDelete() {
+    this.confirmingDelete = false;
+  }
+
+  get itemNameForDelete(): string {
+    const group = this.getSelectedGroup?.name ?? '';
+    const name = this.getSelectedCase?.name ?? '';
+    return (group === name  || group === '') ? name : `${group}.${name}`;
+  }
+
+  handleDeleteClick() {
+    if (this.isEditing) {
+      this.startDeleteConfirmation();
+    } else {
+      this.deleteCase({
+        groupID: this.getSelectedGroup.groupID,
+        caseID: this.getSelectedCase.caseID,
+      });
+    }
+  }
+    
+  
 }
 </script>
 

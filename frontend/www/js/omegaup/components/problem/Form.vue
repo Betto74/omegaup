@@ -16,7 +16,13 @@
       </p>
     </div>
     <div class="card-body px-2 px-sm-4">
-      <form ref="form" class="form" @submit.prevent="submitForm">
+      <form
+        ref="form"
+        :method="isEdit ? 'POST' : undefined"
+        class="form"
+        :enctype="isEdit ? 'multipart/form-data' : undefined"
+        @submit.prevent="handleSubmit"
+      >
         <div class="accordion mb-3">
           <div class="card">
             <div class="card-header">
@@ -36,7 +42,10 @@
             </div>
             <div class="collapse show card-body px-2 px-sm-4 basic-info">
               <div class="row">
-                <div class="form-group col-md-4 introjs-title">
+                <div
+                  class="form-group introjs-title"
+                  :class="isUpdate ? 'col-md-6' : 'col-md-4'"
+                >
                   <label class="control-label">{{ T.wordsTitle }}</label>
                   <input
                     v-model="title"
@@ -48,7 +57,10 @@
                     @blur="onGenerateAlias"
                   />
                 </div>
-                <div class="form-group col-md-4 introjs-short-title">
+                <div
+                  class="form-group introjs-short-title"
+                  :class="isUpdate ? 'col-md-6' : 'col-md-4'"
+                >
                   <label class="control-label">{{ T.wordsAlias }}</label>
                   <input
                     ref="alias"
@@ -63,7 +75,10 @@
                     :disabled="isUpdate"
                   />
                 </div>
-                 <div class="form-group col-md-4 introjs-origin">
+                 <div 
+                    v-if="!isUpdate"
+                    class="form-group col-md-4 introjs-origin"
+                  >
                   <label class="control-label">{{ T.problemEditSource }}</label>
                   <input
                     v-model="source"
@@ -72,6 +87,37 @@
                     type="text"
                     class="form-control"
                     :class="{ 'is-invalid': errors.includes('source') }"
+                  />
+                </div>
+                
+              </div>
+              <div v-if="isUpdate" class="row">
+                <div class="form-group col-md-6 introjs-origin">
+                  <label class="control-label">{{ T.problemEditSource }}</label>
+                  <input
+                    v-model="source"
+                    required
+                    name="source"
+                    type="text"
+                    class="form-control"
+                    :class="{ 'is-invalid': errors.includes('source') }"
+                  />
+                </div>
+
+                <div class="form-group col-md-6 introjs-file">
+                  <label class="control-label">{{
+                    T.problemEditFormFile
+                  }}</label>
+                  <input
+                    :required="!isUpdate"
+                    name="problem_contents"
+                    type="file"
+                    accept=".zip"
+                    class="form-control"
+                    :class="{
+                      'is-invalid': errors.includes('problem_contents'),
+                    }"
+                    @change="onUploadFile"
                   />
                 </div>
               </div>

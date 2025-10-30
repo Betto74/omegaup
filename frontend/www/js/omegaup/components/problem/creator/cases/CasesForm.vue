@@ -58,8 +58,9 @@ const casesStore = namespace('casesStore');
 
 @Component
 export default class CasesForm extends Vue {
+  
+  @Inject('originalCasesMap') readonly cases!:  Map<string, any>;
   @Inject('problemAlias') readonly alias!: string;
-  @Inject('originalCasesMap') readonly cases!:  Map<string, any> ;
   @Prop({ default: false }) readonly isTruncatedInput!: boolean;
   @Prop({ default: false }) readonly isTruncatedOutput!: boolean;
 
