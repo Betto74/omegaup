@@ -18,9 +18,9 @@
     <div class="card-body px-2 px-sm-4">
       <form
         ref="form"
-        :method="isEdit ? 'POST' : undefined"
+        :method="isUpdate ? 'POST' : undefined"
         class="form"
-        :enctype="isEdit ? 'multipart/form-data' : undefined"
+        :enctype="isUpdate ? 'multipart/form-data' : undefined"
         @submit.prevent="handleSubmit"
       >
         <div class="accordion mb-3">
@@ -841,6 +841,13 @@ export default class ProblemForm extends Vue {
   onFileChanged(file: File | null) {
     this.originalFile = file;
   }
+
+  handleSubmit() {
+    if (!this.isUpdate) {
+      this.submitForm();
+    }
+  }
+
   async submitForm() {
     const formElement = this.formRef as HTMLFormElement;
     const formData = new FormData(formElement);
