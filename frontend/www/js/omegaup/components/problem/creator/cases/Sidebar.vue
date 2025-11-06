@@ -195,6 +195,7 @@
                   v-if="isEditing"
                   :visible="isConfirmingDelete('case', groupID, cases[0].caseID)"
                   :item-name="getItemNameForDelete()"
+                  :item-id="getItemIdForDelete()"
                   :on-cancel="cancelDelete"
                 />
               </b-row>
@@ -304,6 +305,7 @@
             v-if="isEditing"
             :visible="isConfirmingDelete('group', groupID)"
             :item-name="getItemNameForDelete()"
+            :item-id="getItemIdForDelete()"
             :on-cancel="cancelDelete"
           />
           <b-collapse v-model="showCases[groupID]" class="w-100">
@@ -349,6 +351,7 @@
                   v-if="isEditing"
                   :visible="isConfirmingDelete('case', groupID, caseID)"
                   :item-name="getItemNameForDelete()"
+                  :item-id="getItemIdForDelete()"
                   :on-cancel="cancelDelete"
                 />
               </b-row>
@@ -364,7 +367,7 @@
             cancel-variant="danger"
             static
             lazy
-            @ok="updateGroupInfo(groupID)"
+            @ok="handleModalOk(groupID)"
           >
             <div class="mt-3">
               <b-form-group
@@ -380,6 +383,7 @@
                   autocomplete="off"
                 />
               </b-form-group>
+
               <b-form-group
                 v-show="!editGroupAutoPoints[groupID]"
                 :label="T.problemCreatorPoints"
@@ -393,6 +397,7 @@
                   min="0"
                 />
               </b-form-group>
+
               <b-form-group
                 :label="T.problemCreatorAutomaticPoints"
                 :description="T.problemCreatorAutomaticPointsHelperGroup"
@@ -401,11 +406,19 @@
                   data-sidebar-edit-group-modal="edit autoPoints"
                   :checked="editGroupAutoPoints[groupID]"
                   @change="toggleGroupAutoPoints(groupID)"
-                >
-                </b-form-checkbox>
+                />
               </b-form-group>
+
+              <div v-if="isEditing">
+                <CaseSimpleForm
+                :is-embedded="true"
+                :trigger-submit="shouldSubmitForm"
+                :edit-group="getGroupById(groupID)"
+                />
+              </div>
             </div>
           </b-modal>
+
         </b-row>
       </b-card>
     </div>
@@ -416,6 +429,7 @@
 import { Component, Prop, Vue, Watch, Inject } from 'vue-property-decorator';
 import problemCreator_LayoutSidebar from './LayoutSidebar.vue';
 import DeleteConfirmationForm from './DeleteConfirmationForm.vue';
+import CaseSimpleForm from './CasesForm.vue';
 import { namespace } from 'vuex-class';
 import T from '../../../../lang';
 import {
@@ -431,6 +445,7 @@ const casesStore = namespace('casesStore');
 @Component({
   components: {
     'omegaup-problem-creator-layout-sidebar': problemCreator_LayoutSidebar,
+    'CaseSimpleForm': CaseSimpleForm,
     'delete-confirmation-form': DeleteConfirmationForm,
   },
 })
@@ -589,6 +604,24 @@ export default class Sidebar extends Vue {
     }
   }
 
+  getItemIdForDelete(): string{
+    if (!this.confirmingDelete.type) {
+      return '';
+    }
+
+    if (this.confirmingDelete.type === 'group') {
+      return this.confirmingDelete.groupID ?? ''; 
+    } 
+    else {
+      return this.confirmingDelete.caseID ?? '';
+    }
+  }
+
+  getGroupById(groupID: GroupID): Group | null {
+    const group = this.groups.find((g) => g.groupID === groupID);
+    return group ?? null;
+  }
+
   cancelDelete() {
     this.confirmingDelete = {
       type: null,
@@ -603,6 +636,17 @@ export default class Sidebar extends Vue {
       this.confirmingDelete.groupID === groupID &&
       (type === 'group' || this.confirmingDelete.caseID === caseID)
     );
+  }
+  shouldSubmitForm = false;
+  handleModalOk(groupID: string) {
+    console.log("aqui andamos");
+    this.updateGroupInfo(groupID);
+    
+    this.shouldSubmitForm = true;
+  
+    this.$nextTick(() => {
+      this.shouldSubmitForm = false;
+    });
   }
 
   handleDeleteClick(type: 'group' | 'case', groupID: GroupID, caseID: CaseID = '') {

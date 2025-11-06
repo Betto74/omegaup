@@ -35,9 +35,11 @@
 
         <div class="col-md-12 mt-3">
           <button
+            ref="submitButton"
             class="btn btn-primary"
             type="submit"
             :disabled="commitMessage === ''"
+            v-show="!isEmbedded"
           >
             {{ "Save case" }}
           </button>
@@ -48,10 +50,11 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop, Inject } from 'vue-property-decorator';
+import { Component, Vue, Prop, Inject, Watch } from 'vue-property-decorator';
 import T from '../../../../lang';
 import { namespace } from 'vuex-class';
 import { Case, Group, CaseLine } from '@/js/omegaup/problem/creator/types';
+import * as ui from '@/js/omegaup/ui';
 
 
 const casesStore = namespace('casesStore');
@@ -59,13 +62,16 @@ const casesStore = namespace('casesStore');
 @Component
 export default class CasesForm extends Vue {
   
-  @Inject('originalCasesMap') readonly cases!:  Map<string, any>;
   @Inject('problemAlias') readonly alias!: string;
   @Prop({ default: false }) readonly isTruncatedInput!: boolean;
   @Prop({ default: false }) readonly isTruncatedOutput!: boolean;
+  @Prop({ default: false }) readonly isCaseEdit!: boolean;
+  @Prop({ default: false }) readonly isEmbedded!: boolean;
+  @Prop({ default: false }) readonly triggerSubmit!: boolean;
+  @Prop({ default: null }) readonly editGroup!: Group;
 
   T = T;
-  commitMessage = "Updating case";
+  commitMessage = this.isCaseEdit ? "Updating case" : "Updating group";
 
   @casesStore.Getter('getSelectedCase') getSelectedCase!: Case;
   @casesStore.Getter('getSelectedGroup') getSelectedGroup!: Group;
@@ -79,21 +85,37 @@ export default class CasesForm extends Vue {
   }
 
   get contentsPayload(): string {
-    const oldCase = this.cases?.get(this.getSelectedCase.caseID) ?? null;
-    const payload = {
-      group_name: this.getSelectedGroup.name,
-      case_name: this.getSelectedCase.name,
-      oldCase,
-      input: this.inputText || '',
-      output: this.isTruncatedOutput ? '' : (this.getSelectedCase.output || ''),
-    };
-    return JSON.stringify(payload);
+    if (this.isCaseEdit) {
+      return JSON.stringify({
+        group: this.getSelectedGroup,
+        case: this.getSelectedCase
+      });
+    }
+
+    const groupToSend = this.editGroup !== null
+    ? this.editGroup
+    : this.getSelectedGroup;
+
+    return JSON.stringify({
+        group: groupToSend
+    });
   }
 
+  @Watch('triggerSubmit')
+  onTriggerSubmitChange(newVal: boolean) {
+    console.log("abemus cambio");
+    if (newVal && this.isEmbedded) {
+      this.$nextTick(() => {
+        const btn = this.$refs.submitButton as HTMLButtonElement | undefined;
+        btn?.click();
+      });
+    }
+  }
+  
   onSubmit(e: Event) {
     if (!this.commitMessage)  {
+      ui.error(T.editFieldRequired);
       e.preventDefault();
-      alert('El mensaje de commit es obligatorio.');
     }
   }
 }

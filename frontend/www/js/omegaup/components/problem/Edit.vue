@@ -343,16 +343,8 @@ export default class ProblemEdit extends Vue {
   get providedAlias(): string{
     return this.data.alias;
   }
-  @Provide('originalCasesMap')
-  get providedCasesMap(): Map<string, any> {
-    if (!this.casesMapCache) {
-      this.casesMapCache = this.getCasesMap();
-    }
-    return this.casesMapCache;
-  }
-
   @Provide('isEditing') isEditing = true;
-  private casesMapCache: Map<string, any> | null = null;
+
   T = T;
   alias = this.data.alias;
   showTab = this.initialTab;
@@ -397,31 +389,6 @@ export default class ProblemEdit extends Vue {
   onGotoPrintableVersion(): void {
     window.location.href = `/arena/problem/${this.alias}/print/`;
   }
-  
-
-  /**
-   * Generate a Map with the original data for all cases.
-   * @returns Map where the key is the caseID and the value contains the name of the case and the group
-   */
-  private getCasesMap(): Map<string, any> {
-    const casesMap = new Map();
-    const casesStore = this.getCasesStore();
-    if (!casesStore) return casesMap
-    const groups = (casesStore as any).groups || [];
-    
-    for (const group of groups) {
-      for (const caseItem of group.cases || []) {
-        casesMap.set(caseItem.caseID, {
-          oldCaseName: caseItem.name,
-          oldGroupName: group.name,
-          input: this.buildInputText(caseItem.lines),
-          output: caseItem.output
-        });
-      }
-    }
-
-    return casesMap;
-  }
 
   private buildInputText(lines: any[]): string {
     if (!lines || !Array.isArray(lines)) return '';
@@ -434,10 +401,11 @@ export default class ProblemEdit extends Vue {
 
   private getCasesStore(): Record<string, unknown> | null {
     if (!this.cdp) return null;
-    const cdpData = (this.cdp as any).cdp;
-    if (!cdpData || !cdpData.casesStore) return null;
+    const cdpData = this.cdp as any;
+    if (!cdpData.casesStore) return null;
     return cdpData.casesStore;
   }
+
 
   private loadCasesStore(): void {
     const storeData = this.getCasesStore();

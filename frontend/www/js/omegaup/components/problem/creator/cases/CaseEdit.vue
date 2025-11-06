@@ -139,6 +139,7 @@
       v-if="isEditing"
       :visible="confirmingDelete"
       :item-name="itemNameForDelete"
+      :item-id="getSelectedCase.caseID"
       :on-cancel="cancelDelete"
     />
     <hr class="border-top my-2" />
@@ -221,6 +222,7 @@
       v-if="isEditing"
       :is-truncated-input="isInputTruncated"
       :is-truncated-output="isOutputTruncated"
+      :isCaseEdit="true"
     />
     </div>
     <b-modal

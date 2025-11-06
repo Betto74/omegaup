@@ -2,7 +2,7 @@
   <b-collapse :visible="visible" class="w-100 mt-2">
     <form enctype="multipart/form-data" method="post" @submit="onSubmit">
       <div class="p-3 border rounded bg-light item-active-for-delete">
-        <div class="form-group col-md-12">
+        <div class="form-group">
           <label class="control-label">{{ T.problemEditCommitMessage }}</label>
           <input v-model="commitMessage" class="form-control" />
         </div>
@@ -13,9 +13,9 @@
         <input type="hidden" name="message" :value="commitMessage" />
         <input type="hidden" name="contents" :value="contentsPayload" />
 
-        <div class="d-flex flex-column flex-sm-row mt-3">
+        <div class="button-container mt-3">
           <button
-            class="btn btn-danger w-100 w-sm-auto mb-2 mb-sm-0"
+            class="btn btn-danger"
             type="submit"
             :disabled="commitMessage === ''"
           >
@@ -23,7 +23,7 @@
           </button>
 
           <button
-            class="btn btn-secondary w-100 w-sm-auto ml-sm-2"
+            class="btn btn-secondary"
             type="button"
             @click="handleCancel"
           >
@@ -43,6 +43,7 @@ export default class DeleteConfirmationForm extends Vue {
   @Inject('problemAlias') readonly alias!: string;
   @Prop({ required: true, type: Boolean }) visible!: boolean;
   @Prop({ required: true, type: String }) itemName!: string;
+  @Prop({ required: false, type: String }) itemId!: string;
   @Prop({ required: true, type: Function }) onCancel!: () => void;
   T = T;
   commitMessage: string = '';
@@ -56,7 +57,7 @@ export default class DeleteConfirmationForm extends Vue {
   }
   get contentsPayload(): string {
     return JSON.stringify({
-      name: this.itemName,
+      id: this.itemId,
     });
   }
   onSubmit(e: Event) {
@@ -76,5 +77,19 @@ export default class DeleteConfirmationForm extends Vue {
 <style scoped>
 .item-active-for-delete {
   border-left: 3px solid #dc3545 !important;
+}
+
+.button-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.button-container .btn {
+  /* Los botones crecerán para llenar el espacio disponible
+     pero con un mínimo de 140px. Si no caben ambos, se apilan automáticamente */
+  flex: 1 1 140px;
+  margin: 0 !important;
+  white-space: normal;
 }
 </style>

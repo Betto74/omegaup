@@ -607,7 +607,8 @@ class ProblemDeployer {
         \OmegaUp\DAO\VO\Identities $identity,
         string $currentZipPath,
         array $pathsToExclude,
-        array $filesToAdd
+        array $filesToAdd,
+        array $pathsToRename = []
     ): void {
         $tmpfile = tmpfile();
         try {
@@ -648,9 +649,19 @@ class ProblemDeployer {
                     continue;
                 }
 
+                // Check if file should be renamed (by prefix)
+                $newFilename = $filename;
+                foreach ($pathsToRename as $oldPrefix => $newPrefix) {
+                    if (str_starts_with($filename, $oldPrefix)) {
+                        // Replace only the prefix, keep the rest
+                        $newFilename = $newPrefix . substr($filename, strlen($oldPrefix));
+                        break;
+                    }
+                }
+
                 $contents = $currentZip->getFromIndex($i);
                 if ($contents !== false) {
-                    $zipArchive->addFromString($filename, $contents);
+                    $zipArchive->addFromString($newFilename, $contents);
                 }
             }
             $currentZip->close();
