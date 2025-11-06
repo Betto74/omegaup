@@ -591,7 +591,7 @@ class ProblemDeployer {
     }
 
     /**
-     * Commits a modified version of the current problem ZIP, excluding certain paths
+     * Commits a modified version of the current problem ZIP, excluding or rename certain paths
      * and adding new files. Uses 'theirs' merge strategy to replace the problem completely.
      *
      * @param string $message
@@ -599,6 +599,7 @@ class ProblemDeployer {
      * @param string $currentZipPath
      * @param array<string> $pathsToExclude
      * @param array<string, string> $filesToAdd
+     * @param array<string, string> $pathsToRenam
      *
      * @throws \OmegaUp\Exceptions\ProblemDeploymentFailedException
      */
